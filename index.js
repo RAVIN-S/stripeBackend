@@ -10,8 +10,9 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.post("/stripe/subscribe", cors(), async (req, res) => {
+     try {
     console.log("requestBody", req.body);
-    const { payment_method, email } = req.body;
+    const { payment_method, email,name,address } = req.body;
     const customer = await stripe.customers.create({
         payment_method: payment_method,
         email: email,
@@ -20,19 +21,21 @@ app.post("/stripe/subscribe", cors(), async (req, res) => {
         }
     });
     let { id: customerId } = customer;
-    const plan = "price_1JZJLjSE6pWSV7cbjsjE3t3x";
-
-    try {
+    const plan = "price_1JZdekGrZDmYTbYXj0AUwzz2";
+   
         const subscription = await stripe.subscriptions.create({
             customer: customerId,
             items: [{
                 plan: plan,
-            }]
+            }],
+            expand: ['latest_invoice.payment_intent']
         });
-
-        res.send({
-            success: true
-        });
+        const status = subscription['latest_invoice']['payment_intent']['status'];
+        if(status==="succeeded"){
+            res.send({success:true});
+        }else{
+            res.send({success:false,message:status});
+        }
     } catch (error) {
         return res.status(400).send({ error: { message: error.message } });
     }
